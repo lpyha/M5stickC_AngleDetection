@@ -1,9 +1,12 @@
 #include <M5StickC.h>
+#include <BluetoothSerial.h>
 
 #define RIGHT 3
 #define LEFT 1
 #define TOP 0
 #define BOTTOM 2
+
+BluetoothSerial SerialBT;
 
 typedef struct{
   float x;
@@ -15,7 +18,16 @@ accel acc;
 float theta;
 int degree;
 int lcd_rot;
-volatile bool isRotate;
+
+int AccToDegeree(accel acc){
+  //atan2の範囲はπ>-πまで
+  theta = atan2(acc.y, acc.x);
+  theta -= PI;
+  theta = abs(theta);
+  degree = theta * (180 / PI);
+  return degree;
+}
+
 
 void LcdRotation(int degree){
   if (degree < 45 && degree >= 0 || degree < 360 && degree >= 315){
@@ -38,28 +50,26 @@ void LcdRotation(int degree){
 }
 
 void setup() {
+  SerialBT.begin("M5IMU");
+  SerialBT.println("START");
   acc.x = 0.0F;
   acc.y = 0.0F;
   acc.z = 0.0F;
   theta = 0.0F;
   degree = 0;
   lcd_rot = 3;
-  isRotate = false;
   M5.begin();
   M5.IMU.Init();
   M5.Lcd.setRotation(RIGHT);
+  delay(3000);
 }
 
 void loop() {
   M5.Lcd.fillScreen(BLACK);
   M5.IMU.getAccelData(&acc.x, &acc.y, &acc.z);
-  //atan2の範囲はπ>-πまで
-  theta = atan2(acc.y, acc.x);
-  theta -= PI;
-  theta = abs(theta);
-  degree = theta * (180 / PI);
+  degree = AccToDegeree(acc);
   LcdRotation(degree);
   M5.Lcd.printf("%d", degree);
-  
+  SerialBT.println(degree);
   delay(200);
 }
